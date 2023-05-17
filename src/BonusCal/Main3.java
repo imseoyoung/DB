@@ -51,26 +51,27 @@ public class Main3 {
                 + "dbms_output.put_line('걸린 시간: ' || time_taken || '초');\n"
                 + "dbms_output.put_line('Customer Count: ' || customer_count);\n" + "END";
         
-        // 서버 출력 활성화
+        // DBMS_OUTPUT.ENABLE 프로시저를 호출하여 서버 출력을 활성화
         CallableStatement callableStatement = conn.prepareCall("{CALL DBMS_OUTPUT.ENABLE}");
         callableStatement.execute();
 
-        // PL/SQL 블록 실행
+        // PL/SQL 블록을 실행하기 위해 plsqlBlock 문자열을 사용하여 CallableStatement를 준비
         callableStatement = conn.prepareCall("{CALL " + plsqlBlock + "}");
+        // CallableStatement를 실행하여 PL/SQL 블록을 실행
         callableStatement.execute();
 
-        // 서버 출력 결과 가져오기
+        // DBMS_OUTPUT.GET_LINES 프로시저를 호출하여 서버 출력 결과 가져오기
         callableStatement = conn.prepareCall("{CALL DBMS_OUTPUT.GET_LINES(?, ?)}");
+        // DBMSOUTPUT_LINESARRAY 형식의 배열을 저장할 파라미터를 등록
         callableStatement.registerOutParameter(1, Types.ARRAY, "DBMSOUTPUT_LINESARRAY");
         callableStatement.registerOutParameter(2, Types.INTEGER);
         callableStatement.execute();
+        // 반복문을 통해 출력 라인을 순회하고 출력
         Array outputArray = callableStatement.getArray(1);
         String[] outputLines = (String[]) outputArray.getArray();
         for (String line : outputLines) {
             System.out.println(line);
         }
-
-        // 자원 해제
         callableStatement.close();
         conn.close();
     }
