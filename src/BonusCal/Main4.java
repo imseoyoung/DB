@@ -7,71 +7,44 @@ public class Main4 {
         // DBMS 연결
         Connection conn = JDBCUtil.getConnection();
 
-        // PL/SQL 코드
-        String plsqlBlock = "DECLARE " +
-                "CURSOR emp_cur IS " +
-                "SELECT ENAME, EMPNO, JOB, SAL, NVL(COMM, 0) AS COMM FROM EMP; " +
-                "CURSOR customer_cur IS " +
-                "SELECT MGR_EMPNO FROM CUSTOMER; " +
-                "count_val NUMBER; " +
-                "high_cnt_mgrs SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST(); " +
-                "low_cnt_mgrs SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST(); " +
-                "bonus_value NUMBER := 0; " +
-                "comm_value NUMBER := 0; " +
-                "empno NUMBER := 0; " +
-                "ename EMP.ENAME%TYPE; " +
-                "job EMP.JOB%TYPE; " +
-                "sal EMP.SAL%TYPE := 0; " +
-                "comm EMP.COMM%TYPE; " +
-                "start_time TIMESTAMP; " +
-                "end_time TIMESTAMP; " +
-                "time_taken NUMBER; " +
-                "customer_count NUMBER; " +
-                "TYPE emp_cur_type IS TABLE OF emp_cur%ROWTYPE; " +
-                "emp_records emp_cur_type; " +
-                "BEGIN " +
-                "BEGIN " +
-                "start_time := systimestamp; " +
-                "OPEN emp_cur; " +
-                "FETCH emp_cur BULK COLLECT INTO emp_records LIMIT 10000; " +
-                "CLOSE emp_cur; " +
-                "FOR i IN 1..emp_records.COUNT LOOP " +
-                "empno := emp_records(i).EMPNO; " +
-                "comm_value := emp_records(i).COMM; " +
-                "count_val := 0; " +
-                "FOR customer_rec IN customer_cur LOOP " +
-                "IF customer_rec.MGR_EMPNO = empno THEN " +
-                "count_val := count_val + 1; " +
-                "END IF; " +
-                "END LOOP; " +
-                "IF count_val >= 100000 THEN " +
-                "high_cnt_mgrs.EXTEND(); " +
-                "high_cnt_mgrs(high_cnt_mgrs.LAST) := TO_CHAR(empno); " +
-                "bonus_value := 2000; " +
-                "ELSE " +
-                "low_cnt_mgrs.EXTEND(); " +
-                "low_cnt_mgrs(low_cnt_mgrs.LAST) := TO_CHAR(empno); " +
-                "bonus_value := 1000; " +
-                "END IF; " +
-                "IF emp_records(i).JOB != 'PRESIDENT' AND emp_records(i).JOB != 'ANALYST' THEN " +
-                "comm := TO_CHAR(comm_value + bonus_value); " +
-                "ELSE " +
-                "comm := TO_CHAR(comm_value); " +
-                "END IF; " +
-                "INSERT INTO BONUS (ename, job, sal, comm) " +
-                "VALUES (emp_records(i).ENAME, emp_records(i).JOB, emp_records(i).SAL, comm); " +
-                "END LOOP; " +
-                "end_time := systimestamp; " +
-                "time_taken := extract(second from end_time - start_time); " +
-                "SELECT COUNT(*) INTO customer_count FROM CUSTOMER; " +
-                "dbms_output.put_line('걸린 시간: ' || time_taken || '초'); " +
-                "dbms_output.put_line('고객 개수: ' || customer_count); " +
-                "COMMIT; " +
-                "EXCEPTION " +
-                "WHEN OTHERS THEN " +
-                "dbms_output.put_line('오류 발생: ' || SQLERRM); " +
-                "ROLLBACK; " +
-                "END;";
+        String plsqlBlock = "DECLARE\n" + "CURSOR emp_cur IS\n"
+                + "SELECT ENAME, EMPNO, JOB, SAL, NVL(COMM, 0) AS COMM FROM EMP;\n"
+                + "CURSOR customer_cur IS\n" + "SELECT MGR_EMPNO FROM CUSTOMER;\n"
+                + "count_val NUMBER;\n"
+                + "high_cnt_mgrs SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST();\n"
+                + "low_cnt_mgrs SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST();\n"
+                + "bonus_value NUMBER := 0;\n" + "comm_value NUMBER := 0;\n"
+                + "empno NUMBER := 0;\n" + "ename EMP.ENAME%TYPE;\n" + "job EMP.JOB%TYPE;\n"
+                + "sal EMP.SAL%TYPE := 0;\n" + "comm EMP.COMM%TYPE;\n" + "start_time TIMESTAMP;\n"
+                + "end_time TIMESTAMP;\n" + "time_taken NUMBER;\n" + "customer_count NUMBER;\n"
+                + "TYPE emp_cur_type IS TABLE OF emp_cur%ROWTYPE;\n" + "emp_records emp_cur_type;\n"
+                + "BEGIN\n" + "BEGIN\n" + "start_time := systimestamp;\n" + "OPEN emp_cur;\n"
+                + "-- fetch size\n" +
+                // fetch size
+                "FETCH emp_cur BULK COLLECT INTO emp_records LIMIT 1000;\n" + "CLOSE emp_cur;\n"
+                + "FOR i IN 1..emp_records.COUNT LOOP\n" + "empno := emp_records(i).EMPNO;\n"
+                + "comm_value := emp_records(i).COMM;\n" + "count_val := 0;\n"
+                + "FOR customer_rec IN customer_cur LOOP\n"
+                + "IF customer_rec.MGR_EMPNO = empno THEN\n" + "count_val := count_val + 1;\n"
+                + "END IF;\n" + "END LOOP;\n" + "IF count_val >= 100000 THEN\n"
+                + "high_cnt_mgrs.EXTEND();\n"
+                + "high_cnt_mgrs(high_cnt_mgrs.LAST) := TO_CHAR(empno);\n"
+                + "bonus_value := 2000;\n" + "ELSE\n" + "low_cnt_mgrs.EXTEND();\n"
+                + "low_cnt_mgrs(low_cnt_mgrs.LAST) := TO_CHAR(empno);\n" + "bonus_value := 1000;\n"
+                + "END IF;\n"
+                + "IF emp_records(i).JOB != 'PRESIDENT' AND emp_records(i).JOB != 'ANALYST' THEN\n"
+                + "comm := TO_CHAR(comm_value + bonus_value);\n" + "ELSE\n"
+                + "comm := TO_CHAR(comm_value);\n" + "END IF;\n"
+                + "INSERT INTO BONUS (ename, job, sal, comm)\n"
+                + "VALUES (emp_records(i).ENAME, emp_records(i).JOB, emp_records(i).SAL, comm);\n"
+                + "END LOOP;\n" + "end_time := systimestamp;\n"
+                + "time_taken := extract(second from end_time - start_time);\n"
+                + "SELECT COUNT(*) INTO customer_count FROM CUSTOMER;\n"
+                + "dbms_output.put_line('걸린 시간: ' || time_taken || '초');\n"
+                + "dbms_output.put_line('고객 개수: ' || customer_count);\n" + "COMMIT;\n"
+                + "EXCEPTION\n" + "WHEN OTHERS THEN\n"
+                + "dbms_output.put_line('오류 발생: ' || SQLERRM);\n" + "ROLLBACK;\n" + "END;\n"
+                + "END";
 
         // DBMS_OUTPUT.ENABLE 프로시저를 호출하여 서버 출력을 활성화
         CallableStatement callableStatement = conn.prepareCall("{CALL DBMS_OUTPUT.ENABLE}");
