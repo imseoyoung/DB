@@ -1,0 +1,117 @@
+SET SERVEROUTPUT ON;
+
+DECLARE
+  -- EMP 데이터를 검색하기 위한 커서
+  CURSOR emp_cur IS
+    SELECT ENAME, EMPNO, JOB, SAL, NVL(COMM, 0) AS COMM FROM EMP;
+    
+  -- CUSTOMER 데이터를 검색하기 위한 커서
+  CURSOR customer_cur IS
+    SELECT MGR_EMPNO FROM CUSTOMER;
+    
+  -- MGR_EMPNO 개수를 저장하기 위한 변수
+  count_val NUMBER;
+  
+  -- 높은 개수와 낮은 개수의 MGR_EMPNO를 저장하기 위한 리스트
+  high_cnt_mgrs SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST();
+  low_cnt_mgrs SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST();
+  
+  -- 보너스 계산을 위한 변수
+  bonus_value NUMBER := 0;
+  comm_value NUMBER := 0;
+  empno NUMBER := 0;
+  
+  -- 보너스 삽입을 위한 변수
+  ename EMP.ENAME%TYPE;
+  job EMP.JOB%TYPE;
+  sal EMP.SAL%TYPE := 0;
+  comm EMP.COMM%TYPE;
+  
+  -- 시간 측정을 위한 변수
+  start_time TIMESTAMP;
+  end_time TIMESTAMP;
+  time_taken NUMBER;
+  
+  -- 고객 개수를 저장하기 위한 변수
+  customer_count NUMBER;
+  
+  -- 커서를 BULK COLLECT를 사용하여 10000개씩 조회할 변수
+  TYPE customer_cur_type IS TABLE OF CUSTOMER.MGR_EMPNO%TYPE;
+  customer_data customer_cur_type;
+  
+  -- 커서를 BULK COLLECT를 사용하여 10000개씩 조회할 변수의 LIMIT
+  CURSOR_LIMIT CONSTANT NUMBER := 10000;
+BEGIN
+  -- 트랜잭션 시작
+  BEGIN
+    -- 시간 측정 시작
+    start_time := systimestamp;
+
+    -- EMP 데이터 검색
+    FOR emp_rec IN emp_cur LOOP
+      empno := emp_rec.EMPNO;
+      
+      -- COMM 값을 검색하고 NULL 처리
+      comm_value := emp_rec.COMM;
+      
+      -- count_val 초기화
+      count_val := 0;
+      
+      -- empno가 MGR_EMPNO에 있는지 확인
+      OPEN customer_cur;
+      LOOP
+        FETCH customer_cur BULK COLLECT INTO customer_data LIMIT CURSOR_LIMIT;
+        FOR i IN 1..customer_data.COUNT LOOP
+          IF customer_data(i) = empno THEN
+            count_val := count_val + 1;
+          END IF;
+        END LOOP;
+        
+        EXIT WHEN customer_cur%NOTFOUND;
+      END LOOP;
+      CLOSE customer_cur;
+      
+      IF count_val >= 100000 THEN
+        high_cnt_mgrs.EXTEND();
+        high_cnt_mgrs(high_cnt_mgrs.LAST) := TO_CHAR(empno);
+        bonus_value := 2000;
+      ELSE
+        low_cnt_mgrs.EXTEND();
+        low_cnt_mgrs(low_cnt_mgrs.LAST) := TO_CHAR(empno);
+        bonus_value := 1000;
+      END IF;
+      
+      -- 보너스 테이블에 삽입
+      IF emp_rec.JOB != 'PRESIDENT' AND emp_rec.JOB != 'ANALYST' THEN
+        comm := TO_CHAR(comm_value + bonus_value);
+      ELSE
+        comm := TO_CHAR(comm_value);
+      END IF;
+      
+      INSERT INTO BONUS (ename, job, sal, comm)
+      VALUES (emp_rec.ENAME, emp_rec.JOB, emp_rec.SAL, comm);
+    END LOOP;
+
+    -- 시간 측정 종료
+    end_time := systimestamp;
+    time_taken := extract(second from end_time - start_time);
+
+    -- 고객 개수 가져오기
+    SELECT COUNT(*) INTO customer_count FROM CUSTOMER;
+
+    -- 걸린 시간과 고객 개수 출력
+    dbms_output.put_line('걸린 시간: ' || time_taken || '초');
+    dbms_output.put_line('고객 개수: ' || customer_count);
+
+    -- 트랜잭션 커밋
+    COMMIT;
+  EXCEPTION
+    -- 예외 처리
+    WHEN OTHERS THEN
+      -- 에러 메시지 출력
+      dbms_output.put_line('오류 발생: ' || SQLERRM);
+      -- 에러 발생시 롤백
+      ROLLBACK;
+  END;
+END;
+/

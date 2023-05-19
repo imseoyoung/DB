@@ -1,0 +1,10 @@
+INSERT INTO BONUS
+SELECT e.ename, e.job, e.sal,
+       CASE WHEN e.job IN ('PRESIDENT', 'ANALYST') THEN 0
+            WHEN COUNT(c.account_mgr) > 100000 THEN 2000
+            ELSE 1000
+       END AS comm
+FROM emp e
+LEFT JOIN customer c ON e.empno = c.account_mgr
+GROUP BY e.ename, e.job, e.sal
+ORDER BY e.ename;
